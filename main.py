@@ -13,16 +13,18 @@ class Bet:
         self.user = user
         self.game = game
 class Game:
-    def __init__(self, first_team, second_team, time):
+    def __init__(self, first_team, second_team, time, tr_name):
         self.first_team = first_team
         self.second_team = second_team
         self.time = time
+        self.tr_name = tr_name
         self.bets = {}
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
 updater = Updater(token, use_context=True)
 
@@ -32,7 +34,8 @@ games = []
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user_id):
     try:
@@ -61,7 +64,7 @@ def matches(update, context):
         return
     msg = ""
     for game in games:
-        msg += game.first_team.name + ' - ' + game.second_team.name + '\n' + "شروع بازی: " + game.time + "\n\n"
+        msg += game.first_team.name + ' - ' + game.second_team.name + '\n' + "شروع بازی: " + game.time + "\n" + "تورنومنت: " + game.tr_name + "\n\n"
     update.message.reply_text(msg, parse_mode = "HTML")
     return
 
@@ -157,7 +160,16 @@ def handle(update, context):
         return
     if st[user_id] == "add2":
         time = update.message.text
-        games.append(Game(add_teams[0], add_teams[1], time))
+        add_teams.append(time)
+        #games.append(Game(add_teams[0], add_teams[1], time))
+        #update.message.reply_text("بازی افزوده شد.")
+        #add_teams.clear()
+        update.message.reply_text("tournoment :")
+        st[user_id] = "add3"
+        return
+    if st[user_id] == "add3":
+        tr_name = update.message.text
+        games.append(Game(add_teams[0], add_teams[1], add_teams[2], tr_name))
         update.message.reply_text("بازی افزوده شد.")
         add_teams.clear()
         st[user_id] = "main"
