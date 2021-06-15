@@ -23,8 +23,8 @@ class Game:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-#token = os.getenv("token")
-token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
+token = os.getenv("token")
+#token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
 updater = Updater(token, use_context=True)
 
@@ -34,8 +34,8 @@ games = []
 user_bet = {}
 add_teams = []
 
-#admins = list(map(int, os.getenv("admins").split(":")))
-admins = list(map(int, "1203400559:258540285".split(":")))
+admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user_id):
     try:
