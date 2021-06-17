@@ -23,8 +23,8 @@ class Game:
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
-#token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
 updater = Updater(token, use_context=True)
 
@@ -34,8 +34,8 @@ games = []
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
-#admins = list(map(int, "1203400559:258540285".split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user_id):
     try:
@@ -94,6 +94,12 @@ def cancel(update, context):
 
     update.message.reply_text("شما در استیت مین قرار دارید.")
     st[user_id] = "main"
+def change_to_min(a):
+    return int(a[4]) + int(a[3]) * 10 + int(a[1]) * 60 + int(a[0]) * 600
+def check_time(a, b):
+    if change_to_min(a) < change_to_min(b) + change_to_min("04:30"):
+        return 1
+    return 0
 def handle(update, context):
     user_id = update.message.chat.id
     add_user(user_id)
@@ -142,6 +148,11 @@ def handle(update, context):
         msg = update.message.text
         user_bet[user_id].facts = msg
         user_bet[user_id].time = update.message.date
+        zaman = str(user_bet[user_id].time)
+        if check_time(user_bet[user_id].game.time, zaman[11:16]):
+            update.message.reply_text("بعد بازي حق پيش بيني نداريد")
+            st[user_id] = "main"
+            return
         user_bet[user_id].game.bets[user_id] = user_bet[user_id]
         update.message.reply_text("پیش بینی شما ذخیره شد.")
         st[user_id] = "main"
@@ -193,7 +204,7 @@ def handle_bet_key(update, context):
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text = games[x].first_team.name + ' - ' + games[x].second_team.name + '\n' + "شروع بازی: " + games[x].time
+        text = games[x].first_team.name + ' - ' + games[x].second_team.name + '\n' + "شروع بازی: " + games[x].time + '\n' + "تورنومنت: " + games[x].tr_name
     )
     user_bet[user_id] = Bet(update.callback_query.from_user, games[x])
     st[user_id] = "bet1"
