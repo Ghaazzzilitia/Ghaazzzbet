@@ -150,7 +150,7 @@ def handle(update, context):
         user_bet[user_id].time = update.message.date
         zaman = str(user_bet[user_id].time)
         if check_time(user_bet[user_id].game.time, zaman[11:16]):
-            update.message.reply_text("بعد بازي حق پيش بيني نداريد")
+            update.message.reply_text("بعد شروع بازي حق پيش بيني نداريد")
             st[user_id] = "main"
             return
         user_bet[user_id].game.bets[user_id] = user_bet[user_id]
