@@ -97,6 +97,8 @@ class Database:
             "time": str(bet.time),
             "facts": bet.facts
         })
+    def get_user_score(self, user_id: int):
+        return self.users.find_one({"tg_user.id": user_id})["score"]
     def get_game_bets(self, game_id):
         return self.bets.find({"game_id": game_id})
     def get_active_games(self):

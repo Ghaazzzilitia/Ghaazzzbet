@@ -14,9 +14,11 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
-db_url = os.getenv("db_url")
+#db_url = os.getenv("db_url")
+db_url = "mongodb+srv://ghaazzz:ghaazzzpass123%24@cluster0.oa5wk.mongodb.net/ghaazzzbot?retryWrites=true&w=majority"
 db = Database(db_url=db_url)
 
 updater = Updater(token, use_context=True)
@@ -24,10 +26,12 @@ updater = Updater(token, use_context=True)
 
 st = {}
 bet_message = {}
+#games = [] #to database
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user):
     user_id = user.id
@@ -100,6 +104,17 @@ def cancel(update, context):
 
     update.message.reply_text("شما در استیت مین قرار دارید.")
     st[user_id] = "main"
+
+def user_score(update, context):
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
+    if st[user_id] != "main":
+        update.message.reply_text("شما در استیت درست قرار ندارید.")
+        return
+
+    update.message.reply_text("امتیاز شما: " + str(db.get_user_score(user_id)))
+    return
 def handle(update, context):
     user = update.message.from_user
     user_id = user.id
@@ -312,6 +327,11 @@ def end_game(update, context):
             }},
             upsert = True
         )
+        context.bot.send_message(
+            chat_id = bt["user"]["id"],
+            text = "!تبریک" + "\n" + "شما نتیجه بازی " + game["first_team"]["name"] + " - " + game["second_team"]["name"] + " را درست حدس زدید." + "\n\n" +
+                    "امتیاز شما: " + str(db.get_user_score(bt["user"]["id"]))
+        )
         msg += "<a href=\"tg://user?id=" + str(bt["user"]["id"]) + "\">" + bt["user"]["first_name"] + "</a>  \n"
     msg += "\n"
     update.message.reply_text(msg, parse_mode="HTML")
@@ -336,6 +356,7 @@ def user_ranking(update, context):
     for i in range(cnt):
         msg += "  <a href=\"tg://user?id=" + str(a[i][1]) + "\">" + str(a[i][2]) + "</a>  " + str(a[i][0]) + "\n"
     update.message.reply_text(msg, parse_mode = "HTML")
+
 def prnt(update, context):
     user_id = update.message.chat.id
     global admins
@@ -378,6 +399,7 @@ dp.add_handler(CommandHandler("add_admin", add_admin))
 dp.add_handler(CommandHandler("add_game", add_game))
 dp.add_handler(CommandHandler("remove_game", remove_game))
 dp.add_handler(CommandHandler("end_game", end_game))
+dp.add_handler(CommandHandler("my_score", user_score))
 dp.add_handler(CommandHandler("ranking", user_ranking))
 dp.add_handler(CommandHandler("print", prnt))
 dp.add_handler(MessageHandler(Filters.all & ~Filters.command, handle))
