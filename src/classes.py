@@ -10,10 +10,11 @@ class Bet:
         self.second_team = second_team
         self.game_time = game_time
 class Game:
-    def __init__(self, game_id, first_team, second_team, time, tr_name):
+    def __init__(self, game_id, first_team, second_team, time, time_msg, tr_name):
         self.game_id = game_id
         self.first_team = first_team
         self.second_team = second_team
         self.time = time
+        self.time_msg = time_msg
         self.tr_name = tr_name
         self.is_active = 1

@@ -24,6 +24,7 @@ class Database:
             filter={"tg_user.id": tg_user.id},
             update={"$set": {
                 "tg_user": {"id": tg_user.id, "first_name": tg_user.first_name, "last_name": tg_user.last_name},
+                "score": 0
             }},
             upsert=True
         )
@@ -72,7 +73,8 @@ class Database:
                 "game_id": game.game_id,
                 "first_team": {"team_id": game.first_team.team_id, "name": game.first_team.name},
                 "second_team": {"team_id": game.second_team.team_id, "name": game.second_team.name},
-                "time": game.time, "tr_name": game.tr_name, "is_active": game.is_active, "is_over": 0
+                "time_msg": game.time_msg, "time": game.time, "tr_name": game.tr_name,
+                 "is_active": game.is_active, "is_over": 0
             }},
             upsert=True
         )

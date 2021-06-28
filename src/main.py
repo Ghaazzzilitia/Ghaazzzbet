@@ -5,6 +5,8 @@ import os
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+import datetime
+
 from database import Database
 
 from classes import *
@@ -12,9 +14,11 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
-db_url = os.getenv("db_url")
+#db_url = os.getenv("db_url")
+db_url = "mongodb+srv://ghaazzz:ghaazzzpass123%24@cluster0.oa5wk.mongodb.net/ghaazzzbot?retryWrites=true&w=majority"
 db = Database(db_url=db_url)
 
 updater = Updater(token, use_context=True)
@@ -26,7 +30,8 @@ bet_message = {}
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user):
     user_id = user.id
@@ -42,9 +47,9 @@ def start(update, context):
     user = update.message.from_user
     user_id = user.id
     if add_user(user):
-        update.message.reply_text("salam")
+        update.message.reply_text("سلام به بات شرط بندی غاززز خوش اومدید.")
     else:
-        update.message.reply_text("salami dobare")
+        update.message.reply_text("سلامی دوباره")
     st[user_id] = "main"
 
 def matches(update, context):
@@ -60,7 +65,7 @@ def matches(update, context):
     games = db.get_active_games()
     msg = ""
     for game in games:
-        msg += game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time"] + "\n" + "تورنومنت: " + game["tr_name"] + "\n"
+        msg += game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time_msg"] + "\n" + "تورنومنت: " + game["tr_name"] + "\n"
         if (game["is_over"]):
             msg += "نتیحه نهایی: " + str(game["first_score"]) + ' - ' + str(game["second_score"]) + "\n"
         msg += "\n"
@@ -95,12 +100,6 @@ def cancel(update, context):
 
     update.message.reply_text("شما در استیت مین قرار دارید.")
     st[user_id] = "main"
-def change_to_min(a):
-    return int(a[4]) + int(a[3]) * 10 + int(a[1]) * 60 + int(a[0]) * 600
-def check_time(a, b):
-    if change_to_min(a) < change_to_min(b) + change_to_min("04:30"):
-        return 1
-    return 0
 def handle(update, context):
     user = update.message.from_user
     user_id = user.id
@@ -132,9 +131,8 @@ def handle(update, context):
         msg = update.message.text
         user_bet[user_id].facts = msg
         user_bet[user_id].time = update.message.date
-        zaman = str(user_bet[user_id].time)
-        if check_time(user_bet[user_id].game_time, zaman[11:16]):
-            update.message.reply_text("بعد شروع بازي حق پيش بيني نداريد")
+        if user_bet[user_id].time > datetime.datetime.strptime(user_bet[user_id].game_time, '%Y-%m-%d %H:%M:%S%z'):
+            update.message.reply_text("بعد شروع بازي حق پيش بيني نداريد.")
             st[user_id] = "main"
             return
         db.add_bet(user_bet[user_id])
@@ -155,23 +153,25 @@ def handle(update, context):
         team_id = db.next_team_id()
         db.add_team(Team(team_id, team_name))
         add_teams.append(Team(team_id, team_name))
-        update.message.reply_text("Time")
+        update.message.reply_text("Time\nYYYY-MM-DD HH:MM:SS+04:30", parse_mode="HTML")
         st[user_id] = "add2"
         return
     if st[user_id] == "add2":
         time = update.message.text
         add_teams.append(time)
-        #games.append(Game(add_teams[0], add_teams[1], time))
-        #update.message.reply_text("بازی افزوده شد.")
-        #add_teams.clear()
-        update.message.reply_text("tournoment :")
+        update.message.reply_text("متن الکی تایم")
         st[user_id] = "add3"
         return
     if st[user_id] == "add3":
+        time = update.message.text
+        add_teams.append(time)
+        update.message.reply_text("tournoment :")
+        st[user_id] = "add4"
+        return
+    if st[user_id] == "add4":
         tr_name = update.message.text
         game_id = db.next_game_id()
-        db.add_game(Game(game_id, add_teams[0], add_teams[1], add_teams[2], tr_name))
-        #games.append(Game(game_id, add_teams[0], add_teams[1], add_teams[2], tr_name))
+        db.add_game(Game(game_id, add_teams[0], add_teams[1], add_teams[2], add_teams[3], tr_name))
         update.message.reply_text("بازی افزوده شد.")
         add_teams.clear()
         st[user_id] = "main"
@@ -195,7 +195,7 @@ def handle_bet_key(update, context):
     bot.edit_message_text(
         chat_id=query.message.chat_id,
         message_id=query.message.message_id,
-        text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time"] + '\n' + "تورنومنت: " + game["tr_name"]
+        text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time_msg"] + '\n' + "تورنومنت: " + game["tr_name"]
     )
     user_bet[user_id] = Bet(user, game["game_id"], game["first_team"]["name"], game["second_team"]["name"], game["time"])
     st[user_id] = "bet1"
@@ -226,6 +226,18 @@ def handle_skip_key(update, context):
         msg = ""
         user_bet[user_id].facts = msg
         user_bet[user_id].time = query.message.date
+        if user_bet[user_id].time > datetime.datetime.strptime(user_bet[user_id].game_time, '%Y-%m-%d %H:%M:%S%z'):
+            bot.send_message(
+                chat_id = query.message.chat_id,
+                text = "بعد شروع بازي حق پيش بيني نداريد."
+            )
+            bot.edit_message_text(
+                chat_id=query.message.chat_id,
+                message_id=query.message.message_id,
+                text = "فکت: "
+            )
+            st[user_id] = "main"
+            return
         db.add_bet(user_bet[user_id])
         #user_bet[user_id].game.bets[user_id] = user_bet[user_id]
         bot.send_message(
@@ -261,23 +273,43 @@ def remove_game(update, context):
 
     if not user_id in admins:
         return
+    if len(context.args) < 1:
+        return
+    try:
+        shomare_bazi = int(context.args[0])
+    except:
+        return
+    # arze dick
+    # dicke arz
     games = db.get_active_games()
-    db.deactivate_game(games[int(context.args[0])]["game_id"])
+    db.deactivate_game(games[shomare_bazi]["game_id"])
 def end_game(update, context):
     user_id = update.message.chat.id
     global admins
 
     if not user_id in admins:
         return
+    if len(context.args) < 3:
+        return
     games = db.get_active_games()
-    game = games[int(context.args[0])]
+    try:
+        game = games[int(context.args[0])]
+        first_score = int(context.args[1])
+        second_score = int(context.args[2])
+    except:
+        return
     game_id = game["game_id"]
-    first_score = int(context.args[1])
-    second_score = int(context.args[2])
     msg = game["first_team"]["name"] + " - " + game["second_team"]["name"] + " winners : " + "\n"
     for bt in db.get_game_bets(game_id):
         if int(bt["first_score"]) != first_score or int(bt["second_score"]) != second_score:
             continue
+        db.users.update_one(
+            filter = {"tg_user.id": bt["user"]["id"]},
+            update = { "$inc": {
+                "score" : 1
+            }},
+            upsert = True
+        )
         msg += "<a href=\"tg://user?id=" + str(bt["user"]["id"]) + "\">" + bt["user"]["first_name"] + "</a>  \n"
     msg += "\n"
     update.message.reply_text(msg, parse_mode="HTML")
@@ -289,6 +321,19 @@ def end_game(update, context):
         }},
         upsert=True
     )
+def user_ranking(update, context):
+    cnt = 10
+    if 0 < len(context.args) and type(context.args[0]) == int:
+        cnt = int(context.args[0])
+    a = []
+    for user in db.users.find({}):
+        a.append([user["score"], user["tg_user"]["id"], user["tg_user"]["first_name"]])
+    a.sort(); a.reverse()
+    cnt = min(cnt, len(a))
+    msg = "Top " + str(cnt) + ": " + "\n"
+    for i in range(cnt):
+        msg += "  <a href=\"tg://user?id=" + str(a[i][1]) + "\">" + str(a[i][2]) + "</a>  " + str(a[i][0]) + "\n"
+    update.message.reply_text(msg, parse_mode = "HTML")
 def prnt(update, context):
     user_id = update.message.chat.id
     global admins
@@ -331,6 +376,7 @@ dp.add_handler(CommandHandler("add_admin", add_admin))
 dp.add_handler(CommandHandler("add_game", add_game))
 dp.add_handler(CommandHandler("remove_game", remove_game))
 dp.add_handler(CommandHandler("end_game", end_game))
+dp.add_handler(CommandHandler("ranking", user_ranking))
 dp.add_handler(CommandHandler("print", prnt))
 dp.add_handler(MessageHandler(Filters.all & ~Filters.command, handle))
 dp.add_handler(CallbackQueryHandler(handle_bet_key, pattern = "^bet"))
