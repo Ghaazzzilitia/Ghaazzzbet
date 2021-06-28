@@ -20,6 +20,15 @@ class Database:
         self.vars: Collection = self.client.ghaazzzbot.variables
 
     def register_user(self, tg_user: User) -> None:
+        if self.users.count_documents({"tg_user.id": tg_user.id}):
+            self.users.update_one(
+                filter={"tg_user.id": tg_user.id},
+                update={"$set": {
+                    "tg_user": {"id": tg_user.id, "first_name": tg_user.first_name, "last_name": tg_user.last_name},
+                }},
+                upsert=True
+            )
+            return
         self.users.update_one(
             filter={"tg_user.id": tg_user.id},
             update={"$set": {

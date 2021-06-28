@@ -24,6 +24,7 @@ updater = Updater(token, use_context=True)
 
 st = {}
 bet_message = {}
+#games = [] #to database
 user_bet = {}
 add_teams = []
 
@@ -340,6 +341,10 @@ def end_game(update, context):
         upsert=True
     )
 def user_ranking(update, context):
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
+
     cnt = 10
     if 0 < len(context.args) and type(context.args[0]) == int:
         cnt = int(context.args[0])
