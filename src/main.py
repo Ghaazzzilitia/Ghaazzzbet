@@ -14,9 +14,11 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
-db_url = os.getenv("db_url")
+#db_url = os.getenv("db_url")
+db_url = "mongodb+srv://ghaazzz:ghaazzzpass123%24@cluster0.oa5wk.mongodb.net/ghaazzzbot?retryWrites=true&w=majority"
 db = Database(db_url=db_url)
 
 updater = Updater(token, use_context=True)
@@ -28,7 +30,8 @@ bet_message = {}
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user):
     user_id = user.id
@@ -94,6 +97,10 @@ def cancel(update, context):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
+    global admins
+
+    if user_id in admins:
+        add_teams.clear()
 
     update.message.reply_text("شما در استیت مین قرار دارید.")
     st[user_id] = "main"
@@ -276,10 +283,12 @@ def remove_game(update, context):
         shomare_bazi = int(context.args[0])
     except:
         return
-    # arze dick
-    # dicke arz
+    if not(0 <= shomare_bazi < db.count_active_games()):
+        update.message.reply_text('اندیس خراب')
+        return
     games = db.get_active_games()
     db.deactivate_game(games[shomare_bazi]["game_id"])
+    update.message.reply_text("موفقیت")
 def end_game(update, context):
     user_id = update.message.chat.id
     global admins
