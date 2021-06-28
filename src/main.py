@@ -14,9 +14,11 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-token = os.getenv("token")
+#token = os.getenv("token")
+token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
 
-db_url = os.getenv("db_url")
+#db_url = os.getenv("db_url")
+db_url = "mongodb+srv://ghaazzz:ghaazzzpass123%24@cluster0.oa5wk.mongodb.net/ghaazzzbot?retryWrites=true&w=majority"
 db = Database(db_url=db_url)
 
 updater = Updater(token, use_context=True)
@@ -28,7 +30,8 @@ bet_message = {}
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
+#admins = list(map(int, os.getenv("admins").split(":")))
+admins = list(map(int, "1203400559:258540285".split(":")))
 
 def add_user(user):
     user_id = user.id
@@ -206,9 +209,9 @@ def handle_bet_key(update, context):
         " - " + str(game["second_score"]) + " " + game["second_team"]["name"])
         st[user_id] = "main"
         return
-    if db.bets.count({"game_id": game["game_id"], "user_id": user_id}):
+    if db.bets.count_documents({"game_id": game["game_id"], "user.id": user_id}):
         bet_message[user_id].reply_text("شما قبلا پیش بینی کرده اید.")
-        bet = db.bets.find_one({"game_id": game["game_id"], "user_id": user_id})
+        bet = db.bets.find_one({"game_id": game["game_id"], "user.id": user_id})
         bet_message[user_id].reply_text(game["first_team"]["name"] + " " + str(bet["first_score"]) +
         " - " + str(bet["second_score"]) + " " + game["second_team"]["name"])
         st[user_id] = "main"
