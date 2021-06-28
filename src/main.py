@@ -14,11 +14,9 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-#token = os.getenv("token")
-token = "1782077594:AAHdDWQxv_wAyVJP8zTSj591v1XgdkwFl4M"
+token = os.getenv("token")
 
-#db_url = os.getenv("db_url")
-db_url = "mongodb+srv://ghaazzz:ghaazzzpass123%24@cluster0.oa5wk.mongodb.net/ghaazzzbot?retryWrites=true&w=majority"
+db_url = os.getenv("db_url")
 db = Database(db_url=db_url)
 
 updater = Updater(token, use_context=True)
@@ -26,12 +24,10 @@ updater = Updater(token, use_context=True)
 
 st = {}
 bet_message = {}
-#games = [] #to database
 user_bet = {}
 add_teams = []
 
-#admins = list(map(int, os.getenv("admins").split(":")))
-admins = list(map(int, "1203400559:258540285".split(":")))
+admins = list(map(int, os.getenv("admins").split(":")))
 
 def add_user(user):
     user_id = user.id
