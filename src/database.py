@@ -8,7 +8,7 @@ from classes import Team, Game, Bet
 
 logger = logging.getLogger('database')
 
-
+import datetime
 
 class Database:
     def __init__(self, db_url):
@@ -111,7 +111,17 @@ class Database:
     def get_game_bets(self, game_id):
         return self.bets.find({"game_id": game_id})
     def get_active_games(self):
-        return self.games.find({"is_active": 1})
+        a = []
+        i = 0
+        games = self.games.find({"is_active": 1})
+        for game in games:
+            a.append([datetime.datetime.strptime(game["time"], '%Y-%m-%d %H:%M:%S%z'), i, game])
+            i += 1
+        a.sort()
+        games = []
+        for j in range(len(a)):
+            games.append(a[j][2])
+        return games
     def count_active_games(self):
         return self.games.count({"is_active": 1})
     def close(self):
