@@ -199,7 +199,7 @@ def handle(update, context):
         return
     if st[user_id] == "announce_all":
         msg = update.message.text
-        for user in db.users.find({"tg_user.id": 1203400559}):
+        for user in db.users.find({}):
             chat_id = user["tg_user"]["id"]
             last_message[chat_id] = context.bot.send_message(
                 chat_id = chat_id,
@@ -209,7 +209,7 @@ def handle(update, context):
         return
     if st[user_id] == "announce_1":
         msg = update.message.text
-        for user in db.users.find({"tg_user.id": 1203400559, "notif.1": 1}):
+        for user in db.users.find({"notif.1": 1}):
             chat_id = user["tg_user"]["id"]
             last_message[chat_id] = context.bot.send_message(
                 chat_id = chat_id,
