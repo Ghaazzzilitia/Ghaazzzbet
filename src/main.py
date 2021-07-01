@@ -199,21 +199,42 @@ def handle(update, context):
         return
     if st[user_id] == "announce_all":
         msg = update.message.text
-        for user in db.users.find({}):
-            chat_id = user["tg_user"]["id"]
+        cnt_mellat = 0
+        for mellat in db.users.find({}):
+            try:
+                chat_id = mellat["tg_user"]["id"]
+                last_message[chat_id] = context.bot.send_message(
+                    chat_id = chat_id,
+                    text = msg
+                )
+                cnt_mellat += 1
+            except:
+                cnt_mellat += 0
+        for mellat in db.users.find({"is_admin": 1}):
+            chat_id = mellat["tg_user"]["id"]
             last_message[chat_id] = context.bot.send_message(
                 chat_id = chat_id,
-                text = msg
+                text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
         st[user_id] = "main"
         return
     if st[user_id] == "announce_1":
         msg = update.message.text
-        for user in db.users.find({"notif.1": 1}):
-            chat_id = user["tg_user"]["id"]
+        for mellat in db.users.find({"notif.1": 1}):
+            try:
+                chat_id = mellat["tg_user"]["id"]
+                last_message[chat_id] = context.bot.send_message(
+                    chat_id = chat_id,
+                    text = msg
+                )
+                cnt_mellat += 1
+            except:
+                cnt_mellat += 0
+        for mellat in db.users.find({"is_admin": 1}):
+            chat_id = mellat["tg_user"]["id"]
             last_message[chat_id] = context.bot.send_message(
                 chat_id = chat_id,
-                text = msg
+                text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
         st[user_id] = "main"
         return
