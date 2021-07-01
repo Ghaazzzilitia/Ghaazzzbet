@@ -14,6 +14,7 @@ from classes import *
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
+
 token = os.getenv("token")
 
 db_url = os.getenv("db_url")
@@ -27,7 +28,6 @@ last_message = {}
 user_bet = {}
 add_teams = []
 
-admins = list(map(int, os.getenv("admins").split(":")))
 
 def add_user(user):
     user_id = user.id
@@ -104,9 +104,8 @@ def cancel(update, context):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
-    global admins
 
-    if user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}):
         add_teams.clear()
 
     last_message[user_id] = update.message.reply_text("شما در استیت مین قرار دارید.")
@@ -159,7 +158,6 @@ def handle(update, context):
             st[user_id] = "main"
             return
         db.add_bet(user_bet[user_id])
-        #user_bet[user_id].game.bets[user_id] = user_bet[user_id]
         last_message[user_id] = update.message.reply_text("پیش بینی شما ذخیره شد.")
         st[user_id] = "main"
         return
@@ -199,9 +197,19 @@ def handle(update, context):
         add_teams.clear()
         st[user_id] = "main"
         return
-    if st[user_id] == "announce":
+    if st[user_id] == "announce_all":
         msg = update.message.text
         for user in db.users.find({"tg_user.id": 1203400559}):
+            chat_id = user["tg_user"]["id"]
+            last_message[chat_id] = context.bot.send_message(
+                chat_id = chat_id,
+                text = msg
+            )
+        st[user_id] = "main"
+        return
+    if st[user_id] == "announce_1":
+        msg = update.message.text
+        for user in db.users.find({"tg_user.id": 1203400559, "notif.1": 1}):
             chat_id = user["tg_user"]["id"]
             last_message[chat_id] = context.bot.send_message(
                 chat_id = chat_id,
@@ -277,7 +285,6 @@ def handle_skip_key(update, context):
             st[user_id] = "main"
             return
         db.add_bet(user_bet[user_id])
-        #user_bet[user_id].game.bets[user_id] = user_bet[user_id]
         last_message[user_id] = bot.send_message(
             chat_id = query.message.chat_id,
             text = "پیش بینی شما ذخیره شد."
@@ -339,7 +346,6 @@ def handle_notif_key(update, context):
         return
     bot = context.bot
     notif_index = query.data[6:]
-    print(notif_index)
     user_notif = db.users.find_one({"tg_user.id": user_id})["notif"]
     db.users.update_one(
         filter = {"tg_user.id": user_id},
@@ -371,28 +377,35 @@ def handle_notif_key(update, context):
         text = "تنظیمات نوتیفیکیشن", 
         reply_markup = markup, parse_mode='HTML'
     )
+
 def add_admin(update, context):
     user_id = update.message.chat.id
-    global admins
 
-    if not user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
-    admins += [context.args[0]]
+    
+    db.users.update_one(
+        filter = {"tg_user.id": int(context.args[0])},
+        update = {"$set": {"is_admin": 1}}
+    )
+    return
+
 def add_game(update, context):
     user_id = update.message.chat.id
-    global admins
 
-    if not user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
+    
     last_message[user_id] = update.message.reply_text("نام تیم اول:")
     st[user_id] = "add0"
 def remove_game(update, context):
     user_id = update.message.chat.id
-    global admins
 
-    if not user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
+    
     if len(context.args) < 1:
+        last_message[user_id] = update.message.reply_text('اندیس ندادی')
         return
     try:
         shomare_bazi = int(context.args[0])
@@ -406,10 +419,10 @@ def remove_game(update, context):
     last_message[user_id] = update.message.reply_text("موفقیت")
 def end_game(update, context):
     user_id = update.message.chat.id
-    global admins
-
-    if not user_id in admins:
+    
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
+    
     if len(context.args) < 3:
         return
     games = db.get_active_games()
@@ -453,8 +466,10 @@ def user_ranking(update, context):
     add_user(user)
 
     cnt = 10
-    if 0 < len(context.args) and type(context.args[0]) == int:
+    try:
         cnt = int(context.args[0])
+    except:
+        pass
     a = []
     for user in db.users.find({}):
         a.append([user["score"], user["tg_user"]["id"], user["tg_user"]["first_name"]])
@@ -467,10 +482,10 @@ def user_ranking(update, context):
 
 def prnt(update, context):
     user_id = update.message.chat.id
-    global admins
 
-    if not user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
+    
     games = db.get_active_games()
     if len(context.args) > 0:
         game = games[int(context.args[0])]
@@ -495,11 +510,14 @@ def prnt(update, context):
     last_message[user_id] = update.message.reply_text(msg, parse_mode="HTML")
 def announce(update, context):
     user_id = update.message.chat.id
-    global admins
 
-    if not user_id in admins:
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
-    st[user_id] = "announce"
+    
+    if "all" in context.args:
+        st[user_id] = "announce_all"
+    else:
+        st[user_id] = "announce_1"
     last_message[user_id] = update.message.reply_text(":متن اطلاعیه")
     return
 
