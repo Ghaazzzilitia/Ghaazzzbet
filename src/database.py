@@ -1,10 +1,11 @@
-import logging
+import logging 
 from typing import Optional
+
 
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from telegram import User
-from classes import Team, Game, Bet
+from classes import *
 
 logger = logging.getLogger('database')
 
@@ -17,7 +18,9 @@ class Database:
         self.teams: Collection = self.client.ghaazzzbot.teams
         self.games: Collection = self.client.ghaazzzbot.games
         self.bets:  Collection = self.client.ghaazzzbot.bets
+        self.mulbets:  Collection = self.client.ghaazzzbot.mulbets
         self.vars: Collection = self.client.ghaazzzbot.variables
+        self.mulents: Collection = self.client.ghaazzzbot.mulent
 
     def register_user(self, tg_user: User) -> None:
         if self.users.count_documents({"tg_user.id": tg_user.id}):
@@ -33,7 +36,7 @@ class Database:
             filter={"tg_user.id": tg_user.id},
             update={"$set": {
                 "tg_user": {"id": tg_user.id, "first_name": tg_user.first_name, "last_name": tg_user.last_name},
-                "score": 0
+                "score": 0, "mulent_score": 0
             }},
             upsert=True
         )
@@ -75,6 +78,16 @@ class Database:
             upsert=True
         )
         return x
+    def next_mulent_id(self):
+        x = self.vars.find_one({"var_name": "next_mulent_id"})["next_mulent_id"]
+        self.vars.update_one(
+            filter = {"var_name": "next_mulent_id"},
+            update={"$set": {
+                "var_name": "next_mulent_id", "next_mulent_id": x + 1,
+            }},
+            upsert=True
+        )
+        return x
     def add_game(self, game: Game):
         self.games.update_one(
             filter={"game_id": game.game_id},
@@ -95,6 +108,14 @@ class Database:
             }},
             upsert=True
         )
+    def deactivate_mulent(self, mulent_id):
+        self.mulents.update_one(
+            filter={"mulent_id": mulent_id},
+            update={"$set": {
+                "is_active": 0
+            }},
+            upsert=True
+        )
     def add_bet(self, bet: Bet):
         x = self.next_bet_id()
         self.bets.insert_one({
@@ -106,10 +127,25 @@ class Database:
             "time": str(bet.time),
             "facts": bet.facts
         })
-    def get_user_score(self, user_id: int):
+    def add_mulbet(self, mulbet: Mulbet):
+        x = self.next_mulent_id()
+        self.mulbets.insert_one({
+            "mulent_id": mulbet.mulent_id,
+            "mulbet_id": x,
+            "user": {"id": mulbet.user.id, "first_name": mulbet.user.first_name, "last_name": mulbet.user.last_name},
+            "time": str(mulbet.time),
+            "choice": mulbet.choice,
+        })
+    def get_user_game_score(self, user_id: int):
         return self.users.find_one({"tg_user.id": user_id})["score"]
+    def get_user_mulent_score(self, user_id: int):
+        return self.users.find_one({"tg_user.id": user_id})["mulent_score"]
     def get_game_bets(self, game_id):
         return self.bets.find({"game_id": game_id})
+    def get_mulent_bets(self, mulent_id):
+        return self.mulbets.find({"mulent_id": mulent_id})
+    def count_active_games(self):
+        return self.games.count({"is_active": 1})
     def get_active_games(self):
         a = []
         i = 0
@@ -122,8 +158,33 @@ class Database:
         for j in range(len(a)):
             games.append(a[j][2])
         return games
-    def count_active_games(self):
-        return self.games.count({"is_active": 1})
+    def count_active_mulents(self):
+        return self.mulents.count({"is_active": 1})
+    def get_active_mulents(self):
+        a = []
+        i = 0
+        mulents = self.mulents.find({"is_active": 1})
+        for mulent in mulents:
+            a.append([datetime.datetime.strptime(mulent["time"], '%Y-%m-%d %H:%M:%S%z'), i, mulent])
+            i += 1
+        a.sort()
+        mulents = []
+        for j in range(len(a)):
+            mulents.append(a[j][2])
+        return mulents
+    def add_mul(self, mul_vec):
+        mul_id = self.next_mulent_id()
+        choices = {}
+        i = 0
+        for s in mul_vec[3:]:
+            choices[str(i)] = s
+            i += 1
+        mul_doc = {
+            "mulent_id": mul_id, "title": mul_vec[0], "question": mul_vec[1],
+            "time": mul_vec[2], "choices": choices, "choice_cnt": len(choices),
+            "is_active": 1, "is_over": 0
+        }
+        self.mulents.insert_one(mul_doc)
     def close(self):
         self.client.close()
         logger.info('client closed')

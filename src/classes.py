@@ -1,3 +1,6 @@
+from pymongo.read_preferences import _ALL_READ_PREFERENCES
+
+
 class Team:
     def __init__(self, team_id, name):
         self.team_id = team_id
@@ -9,6 +12,19 @@ class Bet:
         self.first_team = first_team
         self.second_team = second_team
         self.game_time = game_time
+class Mulent:
+    def __init__(self, mulent_id, title, question, choices, time):
+        self.mulent_id = mulent_id
+        self.title = title
+        self.question = question
+        self.choices = choices
+        self.time = time
+class Mulbet:
+    def __init__(self, user, mulent_id, time, choice):
+        self.user = user
+        self.mulent_id = mulent_id
+        self.time = time
+        self.choice = choice
 class Game:
     def __init__(self, game_id, first_team, second_team, time, time_msg, tr_name):
         self.game_id = game_id
