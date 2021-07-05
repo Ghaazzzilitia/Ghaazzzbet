@@ -33,8 +33,6 @@ class Database:
             filter={"tg_user.id": tg_user.id},
             update={"$set": {
                 "tg_user": {"id": tg_user.id, "first_name": tg_user.first_name, "last_name": tg_user.last_name},
-                "notif": {"1": 1, "2": 1, "3": 1, "4": 1},
-                "is_admin": 0,
                 "score": 0
             }},
             upsert=True

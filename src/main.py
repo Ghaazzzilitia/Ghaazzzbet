@@ -6,6 +6,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import datetime
+import time
 
 from database import Database
 
@@ -13,7 +14,6 @@ from classes import *
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
 
 token = os.getenv("token")
 
@@ -541,9 +541,94 @@ def announce(update, context):
         st[user_id] = "announce_1"
     last_message[user_id] = update.message.reply_text(":متن اطلاعیه")
     return
+def remind_game(update, context):
+    user_id = update.message.chat.id
 
+    if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
+        return
+
+    try:
+        x = int(context.args[0])
+    except:
+        return
+    
+    game = db.get_active_games()[x]
+    
+    first_rem = 6 * 60 * 60
+    second_rem = 15 * 60
+    timestamp = datetime.datetime.strptime('1970-01-01 00:00:00+00:00', '%Y-%m-%d %H:%M:%S%z')
+    y = (datetime.datetime.strptime(game['time'], '%Y-%m-%d %H:%M:%S%z') - timestamp).total_seconds()
+    now = int(time.time())
+    if y - now - first_rem > 0:
+        time.sleep(y - now - first_rem)
+        cnt_mellat = 0
+        for mellat in db.users.find({"notif.2" : 1}):
+            try:
+                chat_id = mellat["tg_user"]["id"]
+                last_message[chat_id] = context.bot.send_message(
+                    chat_id = chat_id,
+                    text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "تنها ۶ ساعت تا شروع بازی" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
+                )
+                cnt_mellat += 1
+            except:
+                pass
+        for mellat in db.users.find({"is_admin": 1}):
+            chat_id = mellat["tg_user"]["id"]
+            last_message[chat_id] = context.bot.send_message(
+                chat_id = chat_id,
+                text = "به " + str(cnt_mellat) + " نفر فرستادم"
+            )
+    now = int(time.time())
+    if y - now - second_rem > 0:
+        time.sleep(y - now - second_rem)
+        cnt_mellat = 0
+        for mellat in db.users.find({"notif.3" : 1}):
+            try:
+                chat_id = mellat["tg_user"]["id"]
+                last_message[chat_id] = context.bot.send_message(
+                    chat_id = chat_id,
+                    text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "تنها یک ربع تا شروع بازی" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
+                )
+                cnt_mellat += 1
+            except:
+                pass
+        for mellat in db.users.find({"is_admin": 1}):
+            chat_id = mellat["tg_user"]["id"]
+            last_message[chat_id] = context.bot.send_message(
+                chat_id = chat_id,
+                text = "به " + str(cnt_mellat) + " نفر فرستادم"
+            )
+    now = int(time.time())
+    if y - now > 0:
+        time.sleep(y - now)
+        cnt_mellat = 0
+        for mellat in db.users.find({"notif.4" : 1}):
+            try:
+                chat_id = mellat["tg_user"]["id"]
+                last_message[chat_id] = context.bot.send_message(
+                    chat_id = chat_id,
+                    text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "بازی شروع شد!" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
+                )
+                cnt_mellat += 1
+            except:
+                pass
+        for mellat in db.users.find({"is_admin": 1}):
+            chat_id = mellat["tg_user"]["id"]
+            last_message[chat_id] = context.bot.send_message(
+                chat_id = chat_id,
+                text = "به " + str(cnt_mellat) + " نفر فرستادم"
+            )
+    
 
 dp = updater.dispatcher
+
+for mellat in db.users.find({"is_admin": 1}):
+    chat_id = mellat["tg_user"]["id"]
+    last_message[chat_id] = dp.bot.send_message(
+        chat_id = chat_id,
+        text = "روشن شدم"
+    )
+
 
 dp.add_handler(CommandHandler("start", start))
 dp.add_handler(CommandHandler("matches", matches))
@@ -558,6 +643,7 @@ dp.add_handler(CommandHandler("ranking", user_ranking))
 dp.add_handler(CommandHandler("settings", settings))
 dp.add_handler(CommandHandler("print", prnt))
 dp.add_handler(CommandHandler("announce", announce))
+dp.add_handler(CommandHandler("remind_game", remind_game, run_async = True))
 dp.add_handler(MessageHandler(Filters.all & ~Filters.command, handle))
 dp.add_handler(CallbackQueryHandler(handle_bet_key, pattern = "^bet"))
 dp.add_handler(CallbackQueryHandler(handle_skip_key, pattern = "^skip"))
