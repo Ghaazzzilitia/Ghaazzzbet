@@ -243,6 +243,7 @@ def handle(update, context):
         return
     if st[user_id] == "announce_1":
         msg = update.message.text
+        cnt_mellat = 0
         for mellat in db.users.find({"notif.1": 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
