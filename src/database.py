@@ -14,13 +14,14 @@ import datetime
 class Database:
     def __init__(self, db_url):
         self.client = MongoClient(db_url)
-        self.users: Collection = self.client.ghaazzzbot.users
-        self.teams: Collection = self.client.ghaazzzbot.teams
-        self.games: Collection = self.client.ghaazzzbot.games
-        self.bets:  Collection = self.client.ghaazzzbot.bets
-        self.mulbets:  Collection = self.client.ghaazzzbot.mulbets
-        self.vars: Collection = self.client.ghaazzzbot.variables
-        self.mulents: Collection = self.client.ghaazzzbot.mulent
+        db = self.client.ghaazzzbot
+        self.users: Collection = db.users
+        self.teams: Collection = db.teams
+        self.games: Collection = db.games
+        self.bets:  Collection = db.bets
+        self.mulbets:  Collection = db.mulbets
+        self.vars: Collection = db.variables
+        self.mulents: Collection = db.mulent
 
     def register_user(self, tg_user: User) -> None:
         if self.users.count_documents({"tg_user.id": tg_user.id}):

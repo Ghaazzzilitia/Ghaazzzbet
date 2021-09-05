@@ -7,9 +7,10 @@ import telegram
 from telegram import user
 from telegram import chat
 from telegram.chat import Chat
+from uuid import uuid4
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, CallbackContext
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, InlineQueryHandler, CallbackContext
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, InlineQueryResultArticle, InputTextMessageContent
 
 import datetime
 import time
@@ -20,6 +21,8 @@ from classes import *
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
+
+
 
 token = os.getenv("token")
 
@@ -190,16 +193,22 @@ def handle(update: Update, context: CallbackContext):
         return
     if st[user_id] == "add0":
         team_name = update.message.text
-        team_id = db.next_team_id()
-        db.add_team(Team(team_id, team_name))
+        if db.teams.count_documents(filter={"name": team_name}) == 0:
+            team_id = db.next_team_id()
+            db.add_team(Team(team_id, team_name))
+        else:
+            team_id = db.teams.find_one(filter={"name": team_name})["team_id"]
         add_teams[user_id].append(Team(team_id, team_name))
         last_message[user_id] = update.message.reply_text("نام تیم دوم:")
         st[user_id] = "add1"
         return
     if st[user_id] == "add1":
         team_name = update.message.text
-        team_id = db.next_team_id()
-        db.add_team(Team(team_id, team_name))
+        if db.teams.count_documents(filter={"name": team_name}) == 0:
+            team_id = db.next_team_id()
+            db.add_team(Team(team_id, team_name))
+        else:
+            team_id = db.teams.find_one(filter={"name": team_name})["team_id"]
         add_teams[user_id].append(Team(team_id, team_name))
         last_message[user_id] = update.message.reply_text("Time\nYYYY-MM-DD HH:MM:SS", parse_mode="HTML")
         st[user_id] = "add2"
@@ -345,8 +354,8 @@ def handle_choose_game_key(update: Update, context: CallbackContext):
         )
         db.deactivate_game(game_id)
         last_message[user_id] = bot.send_message(chat_id=query.message.chat_id, text="با موفقیت حذف شد.")
+        st[user_id] = "main"
         return
-
 def handle_mulbet_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
@@ -386,7 +395,6 @@ def handle_mulbet_key(update: Update, context: CallbackContext):
     msg = mulent["question"]
     last_message[user_id] = last_message[user_id].reply_text(msg, reply_markup = markup, parse_mode='HTML')
     st[user_id] = "mulbet1"
-
 def handle_mulent_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
@@ -415,7 +423,6 @@ def handle_mulent_key(update: Update, context: CallbackContext):
     db.add_mulbet(Mulbet(user, mulent_id, query.message.date, x))
     last_message[user_id] = last_message[user_id].reply_text('پیش بینی شما با موفقیت ثبت شد.')
     st[user_id] = "main"
-
 def handle_skip_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
@@ -457,7 +464,6 @@ def handle_skip_key(update: Update, context: CallbackContext):
         )
         st[user_id] = "main"
         return
-
 def handle_settings_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
@@ -496,7 +502,6 @@ def handle_settings_key(update: Update, context: CallbackContext):
             text = "تنظیمات نوتیفیکیشن", 
             reply_markup = markup, parse_mode='HTML'
         )
-
 def handle_notif_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
@@ -542,8 +547,9 @@ def handle_notif_key(update: Update, context: CallbackContext):
     )
 
 def add_admin(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
-
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
     
@@ -552,10 +558,10 @@ def add_admin(update: Update, context: CallbackContext):
         update = {"$set": {"is_admin": 1}}
     )
     return
-
 def add_game(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
-
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
     
@@ -563,7 +569,9 @@ def add_game(update: Update, context: CallbackContext):
     last_message[user_id] = update.message.reply_text("نام تیم اول:")
     st[user_id] = "add0"
 def remove_game(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -585,7 +593,9 @@ def remove_game(update: Update, context: CallbackContext):
     last_message[user_id] = update.message.reply_text(msg, reply_markup = markup, parse_mode='HTML')
     st[user_id] = "remove_game"
 def remove_mulent(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -604,7 +614,9 @@ def remove_mulent(update: Update, context: CallbackContext):
     db.deactivate_mulent(mulents[shomare_mulent]["mulent_id"])
     last_message[user_id] = update.message.reply_text("موفقیت")
 def end_game(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
     
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -648,7 +660,9 @@ def end_game(update: Update, context: CallbackContext):
     )
 
 def end_mulent(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
     
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -712,7 +726,9 @@ def user_ranking(update: Update, context: CallbackContext):
     last_message[user_id] = update.message.reply_text(msg, parse_mode = "HTML")
 
 def prnt(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -740,7 +756,9 @@ def prnt(update: Update, context: CallbackContext):
         i += 1
     last_message[user_id] = update.message.reply_text(msg, parse_mode="HTML")
 def announce(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -752,7 +770,9 @@ def announce(update: Update, context: CallbackContext):
     last_message[user_id] = update.message.reply_text(":متن اطلاعیه")
     return
 def remind_game(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -838,7 +858,9 @@ def remind_game(update: Update, context: CallbackContext):
                 text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
 def add_mulent(update: Update, context: CallbackContext):
-    user_id = update.message.chat.id
+    user = update.message.from_user
+    user_id = user.id
+    add_user(user)
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
@@ -853,7 +875,46 @@ def add_mulent(update: Update, context: CallbackContext):
     last_message[user_id] = update.message.reply_text("Title:")
 
     return
+
+def inlinequery(update: Update, context: CallbackContext):
+    """Handle the inline query."""
+    name = update.inline_query.query.lower()
+
+    if name == "":
+        return
     
+    teams = db.teams.find(filter={})
+    a = []
+    for team in teams:
+        s = team["name"].lower()
+        sz = len(s)
+        i = 0
+        while i < min(sz, len(name)) and s[i] == name[i]:
+            i += 1
+        if i > 0:
+            a.append([-i, sz, team["name"]])
+    a.sort()
+    if(len(a) > 5):
+        a = a[:5]
+    results = []
+    for i in a:
+        results.append(
+            InlineQueryResultArticle(
+                id=str(uuid4()),
+                title=i[2],
+                input_message_content=InputTextMessageContent(i[2]),
+            )
+        )
+    results.append(
+        InlineQueryResultArticle(
+            id=str(uuid4()),
+            title="Add '" + update.inline_query.query + "'",
+            input_message_content=InputTextMessageContent(update.inline_query.query),
+        )
+    )
+
+
+    update.inline_query.answer(results, cache_time=10)
 
 dp = updater.dispatcher
 
@@ -904,6 +965,7 @@ dp.add_handler(CallbackQueryHandler(handle_skip_key, pattern = "^skip"))
 dp.add_handler(CallbackQueryHandler(handle_settings_key, pattern = "^settings"))
 dp.add_handler(CallbackQueryHandler(handle_notif_key, pattern = "^notif"))
 
+dp.add_handler(InlineQueryHandler(inlinequery))
 
 
 updater.start_polling()
