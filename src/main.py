@@ -2,9 +2,14 @@ import logging
 
 import os
 from re import MULTILINE
+from pymongo import message
+import telegram
+from telegram import user
+from telegram import chat
+from telegram.chat import Chat
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, CallbackContext
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 import datetime
 import time
@@ -15,7 +20,6 @@ from classes import *
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
 
 token = os.getenv("token")
 
@@ -40,7 +44,7 @@ def add_user(user):
     except:
         st[user_id] = "main"
         return 1
-def start(update, context):
+def start(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     if add_user(user):
@@ -48,7 +52,7 @@ def start(update, context):
     else:
         last_message[user_id] = update.message.reply_text("سلامی دوباره")
     st[user_id] = "main"
-def settings(update, context):
+def settings(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -61,7 +65,7 @@ def settings(update, context):
     markup = InlineKeyboardMarkup(keys)
     msg = "تنظیمات"
     last_message[user_id] = update.message.reply_text(msg, reply_markup = markup, parse_mode='HTML')
-def matches(update, context):
+def matches(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -81,7 +85,7 @@ def matches(update, context):
     last_message[user_id] = update.message.reply_text(msg, parse_mode = "HTML")
     return
 
-def bet(update, context):
+def bet(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -97,12 +101,12 @@ def bet(update, context):
     games = db.get_active_games()
     for game in games:
         keys.append([InlineKeyboardButton(text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"],
-                                            callback_data = "bet " + str(game["game_id"]))])
+                                            callback_data = "choose_game bet " + str(game["game_id"]))])
     markup = InlineKeyboardMarkup(keys)
     msg = "کدوم بازی"
     last_message[user_id] = update.message.reply_text(msg, reply_markup = markup, parse_mode='HTML')
     st[user_id] = "bet0"
-def mulbet(update, context):
+def mulbet(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -123,7 +127,7 @@ def mulbet(update, context):
     msg = "کدوم بت"
     last_message[user_id] = update.message.reply_text(msg, reply_markup = markup, parse_mode='HTML')
     st[user_id] = "mulbet0"
-def cancel(update, context):
+def cancel(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -134,7 +138,7 @@ def cancel(update, context):
     last_message[user_id] = update.message.reply_text("شما در استیت مین قرار دارید.")
     st[user_id] = "main"
 
-def user_game_score(update, context):
+def user_game_score(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -144,7 +148,7 @@ def user_game_score(update, context):
 
     last_message[user_id] = update.message.reply_text("امتیاز شما: " + str(db.get_user_game_score(user_id)))
     return
-def handle(update, context):
+def handle(update: Update, context: CallbackContext):
     user = update.message.from_user
     user_id = user.id
     add_user(user)
@@ -197,14 +201,19 @@ def handle(update, context):
         team_id = db.next_team_id()
         db.add_team(Team(team_id, team_name))
         add_teams[user_id].append(Team(team_id, team_name))
-        last_message[user_id] = update.message.reply_text("Time\nYYYY-MM-DD HH:MM:SS+04:30", parse_mode="HTML")
+        last_message[user_id] = update.message.reply_text("Time\nYYYY-MM-DD HH:MM:SS", parse_mode="HTML")
         st[user_id] = "add2"
         return
     if st[user_id] == "add2":
-        time = update.message.text
-        add_teams[user_id].append(time)
-        last_message[user_id] = update.message.reply_text("متن الکی تایم")
-        st[user_id] = "add3"
+        time = update.message.text + "+04:30"
+        try:
+            datetime.datetime.strptime(time, '%Y-%m-%d %H:%M:%S%z')
+            add_teams[user_id].append(time)
+            last_message[user_id] = update.message.reply_text("متن الکی تایم")
+            st[user_id] = "add3"
+        except:
+            last_message[user_id] = update.message.reply_text("Time\nYYYY-MM-DD HH:MM:SS", parse_mode="HTML")
+            st[user_id] = "add2"
         return
     if st[user_id] == "add3":
         time = update.message.text
@@ -243,7 +252,6 @@ def handle(update, context):
         return
     if st[user_id] == "announce_1":
         msg = update.message.text
-        cnt_mellat = 0
         for mellat in db.users.find({"notif.1": 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
@@ -287,7 +295,7 @@ def handle(update, context):
         return
     
 
-def handle_bet_key(update, context):
+def handle_choose_game_key(update: Update, context: CallbackContext):
     
     user = update.callback_query.from_user
     user_id = user.id
@@ -298,34 +306,48 @@ def handle_bet_key(update, context):
             return
     except:
         return
-    if st[user_id] != "bet0":
-        return
-    x = int(query.data[4:])
-    game = db.games.find_one({"game_id": x})
+    stt = query.data.split()[1]
+    game_id = int(query.data.split()[2])
+    game = db.games.find_one({"game_id": game_id})
     bot = context.bot
-    last_message[user_id] = bot.edit_message_text(
-        chat_id=query.message.chat_id,
-        message_id=query.message.message_id,
-        text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time_msg"] + '\n' + "تورنومنت: " + game["tr_name"]
-    )
-    user_bet[user_id] = Bet(user, game["game_id"], game["first_team"]["name"], game["second_team"]["name"], game["time"])
-    st[user_id] = "bet1"
-    if game["is_over"]:
-        last_message[user_id] = last_message[user_id].reply_text("بازی به پایان رسیده.")
-        last_message[user_id] = last_message[user_id].reply_text(game["first_team"]["name"] + " " + str(game["first_score"]) +
-        " - " + str(game["second_score"]) + " " + game["second_team"]["name"])
-        st[user_id] = "main"
+    if stt == "bet":
+        if st[user_id] != "bet0":
+            return
+        last_message[user_id] = bot.edit_message_text(
+            chat_id=query.message.chat_id,
+            message_id=query.message.message_id,
+            text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time_msg"] + '\n' + "تورنومنت: " + game["tr_name"]
+        )
+        user_bet[user_id] = Bet(user, game["game_id"], game["first_team"]["name"], game["second_team"]["name"], game["time"])
+        st[user_id] = "bet1"
+        if game["is_over"]:
+            last_message[user_id] = last_message[user_id].reply_text("بازی به پایان رسیده.")
+            last_message[user_id] = last_message[user_id].reply_text(game["first_team"]["name"] + " " + str(game["first_score"]) +
+            " - " + str(game["second_score"]) + " " + game["second_team"]["name"])
+            st[user_id] = "main"
+            return
+        if db.bets.count_documents({"game_id": game["game_id"], "user.id": user_id}):
+            last_message[user_id] = last_message[user_id].reply_text("شما قبلا پیش بینی کرده اید.")
+            bet = db.bets.find_one({"game_id": game["game_id"], "user.id": user_id})
+            last_message[user_id] = last_message[user_id].reply_text(game["first_team"]["name"] + " " + str(bet["first_score"]) +
+            " - " + str(bet["second_score"]) + " " + game["second_team"]["name"])
+            st[user_id] = "main"
+            return
+        last_message[user_id] = last_message[user_id].reply_text("تعداد گل " + user_bet[user_id].first_team + " : ")
         return
-    if db.bets.count_documents({"game_id": game["game_id"], "user.id": user_id}):
-        last_message[user_id] = last_message[user_id].reply_text("شما قبلا پیش بینی کرده اید.")
-        bet = db.bets.find_one({"game_id": game["game_id"], "user.id": user_id})
-        last_message[user_id] = last_message[user_id].reply_text(game["first_team"]["name"] + " " + str(bet["first_score"]) +
-        " - " + str(bet["second_score"]) + " " + game["second_team"]["name"])
-        st[user_id] = "main"
+    if stt == "remove":
+        if st[user_id] != "remove_game":
+            return
+        last_message[user_id] = bot.edit_message_text(
+            chat_id=query.message.chat_id,
+            message_id=query.message.message_id,
+            text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "شروع بازی: " + game["time_msg"] + '\n' + "تورنومنت: " + game["tr_name"]
+        )
+        db.deactivate_game(game_id)
+        last_message[user_id] = bot.send_message(chat_id=query.message.chat_id, text="با موفقیت حذف شد.")
         return
-    last_message[user_id] = last_message[user_id].reply_text("تعداد گل " + user_bet[user_id].first_team + " : ")
 
-def handle_mulbet_key(update, context):
+def handle_mulbet_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
     add_user(user)
@@ -365,7 +387,7 @@ def handle_mulbet_key(update, context):
     last_message[user_id] = last_message[user_id].reply_text(msg, reply_markup = markup, parse_mode='HTML')
     st[user_id] = "mulbet1"
 
-def handle_mulent_key(update, context):
+def handle_mulent_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
     add_user(user)
@@ -394,7 +416,7 @@ def handle_mulent_key(update, context):
     last_message[user_id] = last_message[user_id].reply_text('پیش بینی شما با موفقیت ثبت شد.')
     st[user_id] = "main"
 
-def handle_skip_key(update, context):
+def handle_skip_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
     add_user(user)
@@ -436,7 +458,7 @@ def handle_skip_key(update, context):
         st[user_id] = "main"
         return
 
-def handle_settings_key(update, context):
+def handle_settings_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
     add_user(user)
@@ -475,7 +497,7 @@ def handle_settings_key(update, context):
             reply_markup = markup, parse_mode='HTML'
         )
 
-def handle_notif_key(update, context):
+def handle_notif_key(update: Update, context: CallbackContext):
     user = update.callback_query.from_user
     user_id = user.id
     add_user(user)
@@ -519,7 +541,7 @@ def handle_notif_key(update, context):
         reply_markup = markup, parse_mode='HTML'
     )
 
-def add_admin(update, context):
+def add_admin(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -531,7 +553,7 @@ def add_admin(update, context):
     )
     return
 
-def add_game(update, context):
+def add_game(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -540,26 +562,29 @@ def add_game(update, context):
     add_teams[user_id] = []
     last_message[user_id] = update.message.reply_text("نام تیم اول:")
     st[user_id] = "add0"
-def remove_game(update, context):
+def remove_game(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
         return
-    
-    if len(context.args) < 1:
-        last_message[user_id] = update.message.reply_text('اندیس ندادی')
+    if st[user_id] != "main":
+        last_message[user_id] = update.message.reply_text("شما در استیت درست قرار ندارید.")
         return
-    try:
-        shomare_bazi = int(context.args[0])
-    except:
+    if db.count_active_games() == 0:
+        last_message[user_id] = update.message.reply_text("در حال حاضر بازی ای برای پیش بینی وجود ندارد.")
         return
-    if not(0 <= shomare_bazi < db.count_active_games()):
-        last_message[user_id] = update.message.reply_text('اندیس خراب')
-        return
+
+    keys = []
+    i = 0
     games = db.get_active_games()
-    db.deactivate_game(games[shomare_bazi]["game_id"])
-    last_message[user_id] = update.message.reply_text("موفقیت")
-def remove_mulent(update, context):
+    for game in games:
+        keys.append([InlineKeyboardButton(text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"],
+                                            callback_data = "choose_game remove " + str(game["game_id"]))])
+    markup = InlineKeyboardMarkup(keys)
+    msg = "کدوم بازی"
+    last_message[user_id] = update.message.reply_text(msg, reply_markup = markup, parse_mode='HTML')
+    st[user_id] = "remove_game"
+def remove_mulent(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -578,7 +603,7 @@ def remove_mulent(update, context):
     mulents = db.get_active_mulents()
     db.deactivate_mulent(mulents[shomare_mulent]["mulent_id"])
     last_message[user_id] = update.message.reply_text("موفقیت")
-def end_game(update, context):
+def end_game(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
     
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -622,7 +647,7 @@ def end_game(update, context):
         upsert=True
     )
 
-def end_mulent(update, context):
+def end_mulent(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
     
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -665,7 +690,7 @@ def end_mulent(update, context):
         upsert=True
     )
 
-def user_ranking(update, context):
+def user_ranking(update: Update, context: CallbackContext):
 
     user = update.message.from_user
     user_id = user.id
@@ -686,7 +711,7 @@ def user_ranking(update, context):
         msg += "  <a href=\"tg://user?id=" + str(a[i][1]) + "\">" + str(a[i][2]) + "</a>  " + str(a[i][0]) + "\n"
     last_message[user_id] = update.message.reply_text(msg, parse_mode = "HTML")
 
-def prnt(update, context):
+def prnt(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -699,7 +724,7 @@ def prnt(update, context):
             i = int(ii)
             bt = db.get_game_bets(game["game_id"])[i]
             msg = " <a href=\"tg://user?id=" + str(bt["user"]["id"]) + "\">" + bt["user"]["first_name"] + "</a>  " + str(bt["first_score"]) + " - " + str(bt["second_score"]) + "\n"
-            msg += bt["facts"] + "\n"
+            msg += str(bt["facts"]) + "\n"
             msg += str(bt["time"]) + "\n"
             last_message[user_id] = update.message.reply_text(msg, parse_mode="HTML")
         return
@@ -714,7 +739,7 @@ def prnt(update, context):
         msg += "\n"
         i += 1
     last_message[user_id] = update.message.reply_text(msg, parse_mode="HTML")
-def announce(update, context):
+def announce(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -726,7 +751,7 @@ def announce(update, context):
         st[user_id] = "announce_1"
     last_message[user_id] = update.message.reply_text(":متن اطلاعیه")
     return
-def remind_game(update, context):
+def remind_game(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -738,6 +763,15 @@ def remind_game(update, context):
         return
     
     game = db.get_active_games()[x]
+    db.games.update_one(
+        filter={"game_id": game["game_id"]},
+        update={"$set": {
+            "remind": 1
+        }}
+    )
+    bot = context.bot
+
+    last_message[user_id] = bot.send_message(chat_id=user_id, text='Remind ' + game["first_team"]["name"] + ' - ' + game["second_team"]["name"])
     
     first_rem = 6 * 60 * 60
     second_rem = 15 * 60
@@ -750,7 +784,7 @@ def remind_game(update, context):
         for mellat in db.users.find({"notif.2" : 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
-                last_message[chat_id] = context.bot.send_message(
+                last_message[chat_id] = bot.send_message(
                     chat_id = chat_id,
                     text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "تنها ۶ ساعت تا شروع بازی" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
                 )
@@ -759,7 +793,7 @@ def remind_game(update, context):
                 pass
         for mellat in db.users.find({"is_admin": 1}):
             chat_id = mellat["tg_user"]["id"]
-            last_message[chat_id] = context.bot.send_message(
+            last_message[chat_id] = bot.send_message(
                 chat_id = chat_id,
                 text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
@@ -770,7 +804,7 @@ def remind_game(update, context):
         for mellat in db.users.find({"notif.3" : 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
-                last_message[chat_id] = context.bot.send_message(
+                last_message[chat_id] = bot.send_message(
                     chat_id = chat_id,
                     text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "تنها یک ربع تا شروع بازی" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
                 )
@@ -779,7 +813,7 @@ def remind_game(update, context):
                 pass
         for mellat in db.users.find({"is_admin": 1}):
             chat_id = mellat["tg_user"]["id"]
-            last_message[chat_id] = context.bot.send_message(
+            last_message[chat_id] = bot.send_message(
                 chat_id = chat_id,
                 text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
@@ -790,7 +824,7 @@ def remind_game(update, context):
         for mellat in db.users.find({"notif.4" : 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
-                last_message[chat_id] = context.bot.send_message(
+                last_message[chat_id] = bot.send_message(
                     chat_id = chat_id,
                     text = game["first_team"]["name"] + ' - ' + game["second_team"]["name"] + '\n' + "بازی شروع شد!" + "\n\n" + "برای اطلاعات بیشتر از دستور" + " /matches " + "و برای غیر فعال کردن اطلاعیه ها از دستور" + " /settings " + "استفاده کنید."
                 )
@@ -799,11 +833,11 @@ def remind_game(update, context):
                 pass
         for mellat in db.users.find({"is_admin": 1}):
             chat_id = mellat["tg_user"]["id"]
-            last_message[chat_id] = context.bot.send_message(
+            last_message[chat_id] = bot.send_message(
                 chat_id = chat_id,
                 text = "به " + str(cnt_mellat) + " نفر فرستادم"
             )
-def add_mulent(update, context):
+def add_mulent(update: Update, context: CallbackContext):
     user_id = update.message.chat.id
 
     if db.users.count_documents({"tg_user.id": user_id, "is_admin": 1}) == 0:
@@ -830,6 +864,19 @@ for mellat in db.users.find({"is_admin": 1}):
         text = "روشن شدم"
     )
 
+gi = -1
+for game in db.get_active_games():
+    gi += 1
+    try:
+        if game["remind"] != 1:
+            continue
+    except:
+        continue
+    cbc = CallbackContext(dp)
+    cbc.args = [str(gi)]
+    update = Update(message=telegram.Message(chat=Chat(id=1203400559, type="private"), message_id=1, date=datetime.datetime(2021, 9, 3, 0, 0, 0)), update_id=67974905)
+    dp.run_async(remind_game, update, cbc, update=update)
+
 
 dp.add_handler(CommandHandler("start", start))
 dp.add_handler(CommandHandler("matches", matches))
@@ -849,13 +896,14 @@ dp.add_handler(CommandHandler("print", prnt))
 dp.add_handler(CommandHandler("announce", announce))
 dp.add_handler(CommandHandler("add_mulent", add_mulent))
 dp.add_handler(CommandHandler("remind_game", remind_game, run_async = True))
-dp.add_handler(MessageHandler(Filters.all & ~Filters.command, handle))
-dp.add_handler(CallbackQueryHandler(handle_bet_key, pattern = "^bet"))
+dp.add_handler(MessageHandler(Filters.text & ~Filters.command & ~Filters.update.edited_message, handle))
+dp.add_handler(CallbackQueryHandler(handle_choose_game_key, pattern = "^choose_game"))
 dp.add_handler(CallbackQueryHandler(handle_mulbet_key, pattern = "^mulbet"))
 dp.add_handler(CallbackQueryHandler(handle_mulent_key, pattern = "^mulent"))
 dp.add_handler(CallbackQueryHandler(handle_skip_key, pattern = "^skip"))
 dp.add_handler(CallbackQueryHandler(handle_settings_key, pattern = "^settings"))
 dp.add_handler(CallbackQueryHandler(handle_notif_key, pattern = "^notif"))
+
 
 
 updater.start_polling()

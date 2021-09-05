@@ -36,7 +36,8 @@ class Database:
             filter={"tg_user.id": tg_user.id},
             update={"$set": {
                 "tg_user": {"id": tg_user.id, "first_name": tg_user.first_name, "last_name": tg_user.last_name},
-                "score": 0, "mulent_score": 0
+                "score": 0, "mulent_score": 0,
+                "notif": {"1": 1, "2": 1, "3": 1, "4": 1}
             }},
             upsert=True
         )
@@ -49,9 +50,9 @@ class Database:
             upsert=True
         )
     def next_team_id(self):
-        x = self.vars.find_one({"var_name": "next_team_id"})["next_team_id"]
+        x = self.vars.find_one({})["next_team_id"]
         self.vars.update_one(
-            filter = {"var_name": "next_team_id"},
+            filter = {},
             update={"$set": {
                 "var_name": "next_team_id", "next_team_id": x + 1,
             }},
@@ -59,9 +60,9 @@ class Database:
         )
         return x
     def next_game_id(self):
-        x = self.vars.find_one({"var_name": "next_game_id"})["next_game_id"]
+        x = self.vars.find_one({})["next_game_id"]
         self.vars.update_one(
-            filter = {"var_name": "next_game_id"},
+            filter = {},
             update={"$set": {
                 "var_name": "next_game_id", "next_game_id": x + 1,
             }},
@@ -69,9 +70,9 @@ class Database:
         )
         return x
     def next_bet_id(self):
-        x = self.vars.find_one({"var_name": "next_bet_id"})["next_bet_id"]
+        x = self.vars.find_one({})["next_bet_id"]
         self.vars.update_one(
-            filter = {"var_name": "next_bet_id"},
+            filter = {},
             update={"$set": {
                 "var_name": "next_bet_id", "next_bet_id": x + 1,
             }},
@@ -79,9 +80,9 @@ class Database:
         )
         return x
     def next_mulent_id(self):
-        x = self.vars.find_one({"var_name": "next_mulent_id"})["next_mulent_id"]
+        x = self.vars.find_one({})["next_mulent_id"]
         self.vars.update_one(
-            filter = {"var_name": "next_mulent_id"},
+            filter = {},
             update={"$set": {
                 "var_name": "next_mulent_id", "next_mulent_id": x + 1,
             }},
