@@ -24,6 +24,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 
 
+
 token = os.getenv("token")
 
 db_url = os.getenv("db_url")
@@ -244,10 +245,7 @@ def handle(update: Update, context: CallbackContext):
         for mellat in db.users.find({}):
             try:
                 chat_id = mellat["tg_user"]["id"]
-                last_message[chat_id] = context.bot.send_message(
-                    chat_id = chat_id,
-                    text = msg
-                )
+                last_message[chat_id] = context.bot.copy_message(chat_id, user_id, update.message.message_id)
                 cnt_mellat += 1
             except:
                 cnt_mellat += 0
@@ -261,13 +259,11 @@ def handle(update: Update, context: CallbackContext):
         return
     if st[user_id] == "announce_1":
         msg = update.message.text
+        cnt_mellat = 0
         for mellat in db.users.find({"notif.1": 1}):
             try:
                 chat_id = mellat["tg_user"]["id"]
-                last_message[chat_id] = context.bot.send_message(
-                    chat_id = chat_id,
-                    text = msg
-                )
+                last_message[chat_id] = context.bot.copy_message(chat_id, user_id, update.message.message_id)
                 cnt_mellat += 1
             except:
                 cnt_mellat += 0
@@ -957,7 +953,7 @@ dp.add_handler(CommandHandler("print", prnt))
 dp.add_handler(CommandHandler("announce", announce))
 dp.add_handler(CommandHandler("add_mulent", add_mulent))
 dp.add_handler(CommandHandler("remind_game", remind_game, run_async = True))
-dp.add_handler(MessageHandler(Filters.text & ~Filters.command & ~Filters.update.edited_message, handle))
+dp.add_handler(MessageHandler(Filters.all & ~Filters.command & ~Filters.update.edited_message, handle))
 dp.add_handler(CallbackQueryHandler(handle_choose_game_key, pattern = "^choose_game"))
 dp.add_handler(CallbackQueryHandler(handle_mulbet_key, pattern = "^mulbet"))
 dp.add_handler(CallbackQueryHandler(handle_mulent_key, pattern = "^mulent"))
